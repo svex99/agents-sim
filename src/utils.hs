@@ -74,21 +74,56 @@ replace_many (from_to : rest) list = new_list
         temp_list = replace_many rest list
         new_list = replace from_to temp_list 
 
--- Returns the all the coords of an item in the grid.
-get_coords :: Eq a => [[a]] -> a -> [(Int, Int)]
-get_coords grid elem = _get_coords grid elem 0
-_get_coords :: Eq a => [[a]] -> a -> Int -> [(Int, Int)]
-_get_coords [] elem _ = []
-_get_coords (row : grid) elem x =
-  [(x, y) | y <- elemIndices elem row] ++ _get_coords grid elem nx
-  where
-    len = length row - 1
-    nx = x + 1
+-- Returns the indexes of elements in the list that satisfy the predicate.
+satisfy_indexes :: [a] -> (a -> Bool) -> [Int]
+satisfy_indexes list p = _satisfy_indexes list p 0
+_satisfy_indexes :: [a] -> (a -> Bool) -> Int -> [Int]
+_satisfy_indexes [] _ _ = []
+_satisfy_indexes (x : xs) p i = (if p x then [i] else []) ++ _satisfy_indexes xs p ni
+    where ni = i + 1
+
+-- Returns all the coords that satisfy a predicate.
+get_coords :: [[a]] -> (a -> Bool) -> [(Int, Int)]
+get_coords grid p = _get_coords grid p 0
+_get_coords :: [[a]] -> (a -> Bool) -> Int -> [(Int, Int)]
+_get_coords [] _ _ = []
+_get_coords (row : grid) p x =
+  [(x, y) | y <- satisfy_indexes row p] ++ _get_coords grid p nx
+    where nx = x + 1
 
 -- Gets the element at a position of the Env if exists.
 -- An element may no exists if it is outside the boundaries of the grid.
-get_elem :: Env -> (Int, Int) -> Maybe Elem
-get_elem (Env grid _) (x, y) =
+get_m_elem :: Env -> (Int, Int) -> Maybe Elem
+get_m_elem (Env grid _) (x, y) =
   if x < 0 || y < 0 || x >= length grid || y >= length (grid !! 0)
     then Nothing
     else Just (grid !! x !! y)
+
+-- 
+get_elem :: Env -> (Int, Int) -> Elem
+get_elem (Env grid _) (x, y) = grid !! x !! y
+
+-- Checks if a box of the Env contains a Robot
+is_robot :: Elem -> Bool
+is_robot (Robot _ _) = True
+is_robot (MultiElem (elem1, _)) = is_robot elem1
+is_robot _ = False
+
+-- Checks if a box of the Env contains a Kid
+is_kid :: Elem -> Bool
+is_kid Kid = True
+is_kid (MultiElem (_, Kid)) = True
+is_kid _ = False
+
+m_is_kid :: Maybe Elem -> Bool
+m_is_kid (Just elem) = is_kid elem
+m_is_kid Nothing = False
+
+is_dirt :: Elem -> Bool
+is_dirt Dirt = True
+is_dirt (MultiElem (_, Dirt)) = True
+is_dirt _ = False
+
+get_robot :: Elem -> Elem
+get_robot robot@(Robot has_kid pos) = robot
+get_robot (MultiElem (robot@(Robot _ _), _)) = robot

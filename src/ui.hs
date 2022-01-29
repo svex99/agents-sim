@@ -13,6 +13,7 @@ mark_corral rows ((x, y) : rest) = new_rows
         temp_rows = mark_corral rows rest
         char = temp_rows !! x !! (2 * y + 1)
         mark_char
+            | char == 'N' = 'V'
             | char == 'E' = 'W'
             | char == 'K' = 'X'
             | char == 'R' = 'Y'
@@ -23,17 +24,20 @@ color_corral :: String -> String
 color_corral corral_str =
     (replace_many
         [
+            ("V", "\ESC[32mN\ESC[0m"),  -- green
             ("W", "\ESC[32m■\ESC[0m"),  -- green
-            ("X", "\ESC[32mK\ESC[0m"),
-            ("Y", "\ESC[32mR\ESC[0m"),
-            ("Z", "\ESC[32mB\ESC[0m"),
+            ("X", "\ESC[32mK\ESC[0m"),  -- green
+            ("Y", "\ESC[32mR\ESC[0m"),  -- green
+            ("Z", "\ESC[32mB\ESC[0m"),  -- green
             ("K", "\ESC[36mK\ESC[0m"),  -- cyan
             ("D", "\ESC[33m■\ESC[0m"),  -- yellow
             ("O", "\ESC[35m■\ESC[0m"),  -- magenta
+            ("N", "\ESC[31mN\ESC[0m"),  -- red
+            ("L", "\ESC[33mB\ESC[0m"),  -- yellow
             ("B", "\ESC[31mB\ESC[0m"),  -- red
-            ("R", "\ESC[31mR\ESC[0m"),
-            ("E", "■"),
-            (",", "  "), ("[", "    | "), ("]", " | ")
+            ("M", "\ESC[33mR\ESC[0m"),  -- yellow
+            ("R", "\ESC[31mR\ESC[0m"),  -- red
+            ("E", "■"), (",", "  "), ("[", "    | "), ("]", " | ")
         ] corral_str)
 
 start_label :: String

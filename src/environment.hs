@@ -51,6 +51,11 @@ empties (row : grid) corral x =
 
 -- add randomly an Elem in an empty space of the Env
 add_elem :: StdGen -> Env -> Elem -> (Env, StdGen)
+add_elem gen (Env grid corral) (Robot _ _) = (Env new_grid corral, ngen)
+  where
+    empty_boxes = empties grid corral 0
+    (box, ngen) = rand_choice gen empty_boxes
+    new_grid = replace_at grid (Robot False box) box
 add_elem gen (Env grid corral) elem = (Env new_grid corral, ngen)
   where
     empty_boxes = empties grid corral 0
@@ -69,11 +74,13 @@ add_elems gen env@(Env grid corral) elem n = (nenv, ngen)
 add_elem_to_env_at :: Env -> Elem -> (Int, Int) -> Env
 add_elem_to_env_at (Env grid corral) elem pos = Env (replace_at grid elem pos) corral
 
--- Returns all the coords outside the corral that contains determinated Elem.
-fetch_all :: Env -> Elem -> [(Int, Int)]
-fetch_all (Env grid corral) elem = rem_sublist corral coords
-    where
-        coords = get_coords grid elem
+-- Returns all the coords that satisfy a predicate.
+fetch_all :: Env -> (Elem -> Bool) -> [(Int, Int)]
+fetch_all (Env grid corral) elem = get_coords grid elem
+
+-- Returns all the coords outside the corral that satisfy a predicate.
+fetch_all_out :: Env -> (Elem -> Bool) -> [(Int, Int)]
+fetch_all_out (Env grid corral) elem = rem_sublist corral (get_coords grid elem)
 
 -- returns a new Env randomly generated
 random_env :: StdGen -> (Int, Int) -> (Int, Int, Int) -> (Env, StdGen)
@@ -232,14 +239,14 @@ amount_to_be_dirty env@(Env grid _) (x, y)
   | kids == 2 = 3
   | otherwise = 6
   where
-    ul = if (get_elem env (x - 1, y - 1)) == Just Kid then 1 else 0
-    u = if (get_elem env (x - 1, y)) == Just Kid then 1 else 0
-    ur = if (get_elem env (x - 1, y + 1)) == Just Kid then 1 else 0
-    dl = if (get_elem env (x + 1, y - 1)) == Just Kid then 1 else 0
-    d = if (get_elem env (x + 1, y)) == Just Kid then 1 else 0
-    dr = if (get_elem env (x + 1, y + 1)) == Just Kid then 1 else 0
-    l = if (get_elem env (x, y - 1)) == Just Kid then 1 else 0
-    r = if (get_elem env (x, y + 1)) == Just Kid then 1 else 0
+    ul = if m_is_kid (get_m_elem env (x - 1, y - 1)) then 1 else 0
+    u = if m_is_kid (get_m_elem env (x - 1, y)) then 1 else 0
+    ur = if m_is_kid (get_m_elem env (x - 1, y + 1)) then 1 else 0
+    dl = if m_is_kid (get_m_elem env (x + 1, y - 1)) then 1 else 0
+    d = if m_is_kid (get_m_elem env (x + 1, y)) then 1 else 0
+    dr = if m_is_kid (get_m_elem env (x + 1, y + 1)) then 1 else 0
+    l = if m_is_kid (get_m_elem env (x, y - 1)) then 1 else 0
+    r = if m_is_kid (get_m_elem env (x, y + 1)) then 1 else 0
     kids = ul + u + ur + dl + d + dr + l + r + 1
 
 -- returns the boxes empties and outside the corral near a box.
@@ -250,14 +257,14 @@ empties_near env@(Env grid corral) (x, y) =
     (ul_pos, u_pos, ur_pos) = ((x - 1, y - 1), (x - 1, y), (x - 1, y + 1))
     (dl_pos, d_pos, dr_pos) = ((x + 1, y - 1), (x + 1, y), (x + 1, y + 1))
     (l_pos, r_pos) = ((x, y - 1), (x, y + 1))
-    ul = if not (elem ul_pos corral) && (get_elem env ul_pos) == Just Empty then [ul_pos] else []
-    u = if not (elem u_pos corral) && (get_elem env u_pos) == Just Empty then [u_pos] else []
-    ur = if not (elem ur_pos corral) && (get_elem env ur_pos) == Just Empty then [ur_pos] else []
-    dl = if not (elem dl_pos corral) && (get_elem env dl_pos) == Just Empty then [dl_pos] else []
-    d = if not (elem d_pos corral) && (get_elem env d_pos) == Just Empty then [d_pos] else []
-    dr = if not (elem dr_pos corral) && (get_elem env dr_pos) == Just Empty then [dr_pos] else []
-    l = if not (elem l_pos corral) && (get_elem env l_pos) == Just Empty then [l_pos] else []
-    r = if not (elem r_pos corral) && (get_elem env r_pos) == Just Empty then [r_pos] else []
+    ul = if not (elem ul_pos corral) && (get_m_elem env ul_pos) == Just Empty then [ul_pos] else []
+    u = if not (elem u_pos corral) && (get_m_elem env u_pos) == Just Empty then [u_pos] else []
+    ur = if not (elem ur_pos corral) && (get_m_elem env ur_pos) == Just Empty then [ur_pos] else []
+    dl = if not (elem dl_pos corral) && (get_m_elem env dl_pos) == Just Empty then [dl_pos] else []
+    d = if not (elem d_pos corral) && (get_m_elem env d_pos) == Just Empty then [d_pos] else []
+    dr = if not (elem dr_pos corral) && (get_m_elem env dr_pos) == Just Empty then [dr_pos] else []
+    l = if not (elem l_pos corral) && (get_m_elem env l_pos) == Just Empty then [l_pos] else []
+    r = if not (elem r_pos corral) && (get_m_elem env r_pos) == Just Empty then [r_pos] else []
 
 -- gets the boxes to be dirty after a kid moves.
 boxes_to_be_dirty :: StdGen -> Env -> (Int, Int) -> (Int, Int) -> ([(Int, Int)], StdGen)
@@ -297,18 +304,24 @@ push_obs env@(Env grid corral) (px, py) obs_pos@(ox, oy) = new_env
 -- Makes the movement of a kid over the environment.
 -- Returns the new env, the new generator and the new pos of the kid.
 make_kid_move :: StdGen -> Env -> (Int, Int) -> (Env, StdGen, (Int, Int))
-make_kid_move gen env pos = (nenv, ngen, new_pos)
+make_kid_move gen env@(Env grid corral) pos@(x, y) = (nenv, ngen, new_pos)
     where
+        -- decide the kid new position
         (new_pos, tgen1) = kid_new_pos gen env pos
+        -- decide where dirt if moves
         (make_dirt, tgen2) = randomR (0, 1) tgen1 :: (Int, StdGen)
         (to_be_dirty, ngen) = boxes_to_be_dirty tgen2 env pos new_pos
         -- checks if kid moved or not
         tenv =
             let
-                tenv0 = if get_elem env new_pos == Just Obstacle
+                tenv0 = if get_m_elem env new_pos == Just Obstacle
                     then push_obs env pos new_pos
                     else env
-                tenv1 = add_elem_to_env_at tenv0 Empty pos
+                elem_at_pos = grid !! x !! y
+                tenv1
+                  | elem_at_pos == Kid = add_elem_to_env_at tenv0 Empty pos
+                  | is_robot elem_at_pos = add_elem_to_env_at tenv0 robot pos
+                      where robot = get_robot elem_at_pos
                 tenv2 = add_elem_to_env_at tenv1 Kid new_pos
             in (if pos /= new_pos then tenv2 else env)
         nenv = if (pos /= new_pos) && (make_dirt == 1)

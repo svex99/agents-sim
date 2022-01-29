@@ -3,6 +3,7 @@ import Types
 import Agents
 import Environment
 import UI
+import Utils
 
 -- test :: (Int, Int) -> (Int, Int, Int) -> Env
 -- test size (amount_c, amount_o, amount_d) = Env fgrid corral
@@ -41,7 +42,7 @@ sim gen env round = do
         " (clean "++ show (truncate $ score_env env) ++ " %)")
     putStrLn (" " ++ replicate 31 '-' ++ "\ESC[0m")
     -- make kids movements
-    let kids = fetch_all env Kid
+    let kids = fetch_all_out env (\ x -> is_kid x)
     (tenv, tgen) <- move_kids gen env kids
     -- make robot action
 
