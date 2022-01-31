@@ -1,7 +1,8 @@
 module Types where
 
 data Elem =
-    Empty
+    Void    -- used to represent a position outside the grid
+    | Empty
     | Obstacle
     | Dirt
     | Kid

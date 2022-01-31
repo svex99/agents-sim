@@ -93,15 +93,11 @@ _get_coords (row : grid) p x =
 
 -- Gets the element at a position of the Env if exists.
 -- An element may no exists if it is outside the boundaries of the grid.
-get_m_elem :: Env -> (Int, Int) -> Maybe Elem
-get_m_elem (Env grid _) (x, y) =
-  if x < 0 || y < 0 || x >= length grid || y >= length (grid !! 0)
-    then Nothing
-    else Just (grid !! x !! y)
-
--- 
 get_elem :: Env -> (Int, Int) -> Elem
-get_elem (Env grid _) (x, y) = grid !! x !! y
+get_elem (Env grid _) (x, y) =
+  if x < 0 || y < 0 || x >= length grid || y >= length (grid !! 0)
+    then Void
+    else (grid !! x !! y)
 
 -- Checks if a box of the Env contains a Robot
 is_robot :: Elem -> Bool
@@ -114,10 +110,6 @@ is_kid :: Elem -> Bool
 is_kid Kid = True
 is_kid (MultiElem (_, Kid)) = True
 is_kid _ = False
-
-m_is_kid :: Maybe Elem -> Bool
-m_is_kid (Just elem) = is_kid elem
-m_is_kid Nothing = False
 
 is_dirt :: Elem -> Bool
 is_dirt Dirt = True
