@@ -34,12 +34,10 @@ rand_rem_k gen list k = ([elem] ++ rest, new_list, ngen)
 rem_dups :: Ord a => [a] -> [a]
 rem_dups = toList . fromList
 
--- removes a list of elements from other list. 
+-- removes a list of elements from other list.
 rem_sublist :: Ord a => [a] -> [a] -> [a]
-rem_sublist sublist list = toList $ x \\ y
-    where
-        x = fromList list
-        y = fromList sublist
+rem_sublist [] list = list
+rem_sublist (x:xs) list = filter (/= x) (rem_sublist xs list)
 
 -- returns the adjacents boxes of a box in a grid.
 get_adj :: (Int, Int) -> (Int, Int) -> [(Int, Int)]
@@ -111,11 +109,20 @@ is_kid Kid = True
 is_kid (MultiElem (_, Kid)) = True
 is_kid _ = False
 
+is_kid_alone :: Elem -> Bool
+is_kid_alone elem = (is_kid elem) && (not (is_robot elem))
+
 is_dirt :: Elem -> Bool
 is_dirt Dirt = True
 is_dirt (MultiElem (_, Dirt)) = True
 is_dirt _ = False
 
+is_dirt_alone :: Elem -> Bool
+is_dirt_alone elem = (is_dirt elem) && (not (is_robot elem))
+
 get_robot :: Elem -> Elem
 get_robot robot@(Robot has_kid pos) = robot
 get_robot (MultiElem (robot@(Robot _ _), _)) = robot
+
+force_value :: Maybe a -> a
+force_value (Just a) = a

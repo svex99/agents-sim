@@ -3,6 +3,7 @@ module UI where
 import Types
 import Environment
 import Utils
+import No_coop_agent
 
 ---------------------------- visual functions --------------------------------
 
@@ -63,3 +64,9 @@ print_env (Env grid corral) = putStr nice_env
         colored_corral = color_corral (unlines marked_corral)
         line = "    " ++ replicate (length (grid !! 0) * 3 + 2) '-' ++ " \n"
         nice_env = line ++ colored_corral ++ line
+
+print_plans :: Plans -> IO ()
+print_plans (Plans []) = putStrLn ""
+print_plans (Plans ((Robot has_kid pos, Plan goals) : plans)) = do
+    putStrLn ("Robot " ++ show has_kid ++ " " ++ show pos ++ " -> " ++ show goals)
+    print_plans (Plans plans)

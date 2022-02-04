@@ -76,11 +76,15 @@ add_elem_to_env_at (Env grid corral) elem pos = Env (replace_at grid elem pos) c
 
 -- Returns all the coords that satisfy a predicate.
 fetch_all :: Env -> (Elem -> Bool) -> [(Int, Int)]
-fetch_all (Env grid corral) elem = get_coords grid elem
+fetch_all (Env grid corral) pred = get_coords grid pred
 
 -- Returns all the coords outside the corral that satisfy a predicate.
 fetch_all_out :: Env -> (Elem -> Bool) -> [(Int, Int)]
-fetch_all_out (Env grid corral) elem = rem_sublist corral (get_coords grid elem)
+fetch_all_out (Env grid corral) pred = rem_sublist corral (get_coords grid pred)
+
+all_robots :: Env -> [Elem]
+all_robots env =
+    [get_robot (get_elem env p) | p <- (fetch_all env (\ x -> is_robot x))]
 
 -- returns a new Env randomly generated
 random_env :: StdGen -> (Int, Int) -> (Int, Int, Int) -> (Env, StdGen)
