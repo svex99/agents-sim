@@ -136,7 +136,6 @@ nearest_kid env@(Env _ corral) start robot = let
     condition = (\ pos -> is_kid_alone (get_elem env pos))
     in _get_nearest env start condition robot False
 
-
 -- Returns the path to the nearest Dirt
 nearest_dirt :: Env -> (Int, Int) -> Elem -> [(Int, Int)]
 nearest_dirt env start robot =

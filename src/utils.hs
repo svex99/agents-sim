@@ -134,3 +134,6 @@ force_value (Just a) = a
 
 xor :: Bool -> Bool -> Bool
 xor a b = (a || b) && not (a && b)
+
+average :: [Float] -> Float
+average xs = sum xs / (fromIntegral (length xs))

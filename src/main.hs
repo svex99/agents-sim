@@ -46,16 +46,18 @@ move_robots_no_coop env plans frobots@(robot@(Robot has_kid pos) : robots) = do
 
 -- Runs a simulation with the generator, the env and the number of
 --      rounds passed as arguments.
-sim :: StdGen -> Env -> Plans -> Int -> IO ()
-sim _ _ _ 0 = do
+sim :: StdGen -> Env -> Plans -> Int -> [Float] -> IO ()
+sim _ _ _ 0  percents = do
     putStrLn (" \ESC[32m" ++ replicate 31 '-')
     putStrLn " | > Simulation Finished!      |"
     putStrLn (" " ++ replicate 31 '-' ++ "\ESC[0m")
-sim gen env plans round = do
+    putStrLn ("Average boxes clean: " ++ show (average percents) ++ " %")
+sim gen env plans round percents = do
+    let score = score_env env
     putStrLn (" \ESC[32m" ++ replicate 31 '-')
     putStrLn (
         " | > Round " ++ show round ++
-        " (clean "++ show (truncate $ score_env env) ++ " %)")
+        " (clean "++ show (truncate $ score) ++ " %)")
     putStrLn (" " ++ replicate 31 '-' ++ "\ESC[0m")
     print_plans plans
     -- make kids movements
@@ -63,26 +65,27 @@ sim gen env plans round = do
     (tenv1, tgen1) <- move_kids gen env kids
     -- make robot action
     let robots = all_robots env
-    putStrLn (show (max_score_corral env))
     (tenv2, nplans) <- move_robots_no_coop tenv1 plans robots
     -- go next round
-    sim tgen1 tenv2 nplans (round - 1)
+    sim tgen1 tenv2 nplans (round - 1) (percents ++ [score])
 
 -- Runs a simulation with a seed
-seed_sim :: Int -> Int -> IO ()
-seed_sim seed rounds = do
-    let (env, gen) = random_env (mkStdGen seed) (6, 6) (5, 5, 5, 3)
+-- (seed, number of rounds, (n, m), (kids, obstacles, dirt, robots))
+seed_sim :: Int -> Int -> (Int, Int) -> (Int, Int, Int, Int) -> IO ()
+seed_sim seed rounds size elems = do
+    let (env, gen) = random_env (mkStdGen seed) size elems
     let plans = update_all_plans env
     putStrLn start_label
     print_env env
-    sim gen env plans rounds
+    sim gen env plans rounds []
 
 -- Runs a simulation without a seed
-rand_sim :: Int -> IO ()
-rand_sim rounds = do
+-- (number of rounds, (n, m), (kids, obstacles, dirt, robots))
+rand_sim :: Int -> (Int, Int) -> (Int, Int, Int, Int) -> IO ()
+rand_sim rounds size elems = do
     gen <- newStdGen
-    let (env, tgen) = random_env gen (6, 6) (4, 4, 4, 2)
+    let (env, tgen) = random_env gen size elems
     let plans = update_all_plans env
     putStrLn start_label
     print_env env
-    sim tgen env plans rounds
+    sim tgen env plans rounds []
