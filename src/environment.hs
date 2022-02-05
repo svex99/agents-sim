@@ -87,8 +87,8 @@ all_robots env =
     [get_robot (get_elem env p) | p <- (fetch_all env (\ x -> is_robot x))]
 
 -- returns a new Env randomly generated
-random_env :: StdGen -> (Int, Int) -> (Int, Int, Int) -> (Env, StdGen)
-random_env gen size (kids, obstacles, dirt) = (nenv, ngen)
+random_env :: StdGen -> (Int, Int) -> (Int, Int, Int, Int) -> (Env, StdGen)
+random_env gen size (kids, obstacles, dirt, robots) = (nenv, ngen)
     where
         grid = build_grid size
         (corral, gen1) = build_corral gen size kids []
@@ -100,7 +100,7 @@ random_env gen size (kids, obstacles, dirt) = (nenv, ngen)
         -- add dirt
         (env3, gen4) = add_elems gen3 env2 Dirt dirt
         -- add robot
-        (nenv, ngen) = add_elems gen4 env3 (Robot False (0, 0)) 1
+        (nenv, ngen) = add_elems gen4 env3 (Robot False (0, 0)) robots
 
 ----------------------------- Obstacle functions -----------------------------
 

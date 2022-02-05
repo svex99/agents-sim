@@ -39,6 +39,11 @@ rem_sublist :: Ord a => [a] -> [a] -> [a]
 rem_sublist [] list = list
 rem_sublist (x:xs) list = filter (/= x) (rem_sublist xs list)
 
+-- Retruns True if the boxes are adjacent
+is_adj :: (Int, Int) -> (Int, Int) -> Bool
+is_adj pos (x, y) =
+    elem pos [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+
 -- returns the adjacents boxes of a box in a grid.
 get_adj :: (Int, Int) -> (Int, Int) -> [(Int, Int)]
 get_adj (n, m) (x, y) = 
@@ -126,3 +131,6 @@ get_robot (MultiElem (robot@(Robot _ _), _)) = robot
 
 force_value :: Maybe a -> a
 force_value (Just a) = a
+
+xor :: Bool -> Bool -> Bool
+xor a b = (a || b) && not (a && b)

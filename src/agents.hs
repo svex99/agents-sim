@@ -26,25 +26,29 @@ is_blocked env@(Env grid corral) pos =
 -- Every side of the box that contains (void, dirt, obstacle, kid) sums +1
 -- Every side consecutive of the box bloqued sums +1.
 corral_box_score :: Env -> (Int, Int) -> Int
-corral_box_score env (x, y) =
-    (if up then 1 else 0) +
-    (if down then 1 else 0) +
-    (if left then 1 else 0) +
-    (if right then 1 else 0) +
-    (if up && right then 1 else 0) +
-    (if up && left then 1 else 0) +
-    (if down && right then 1 else 0) +
-    (if down && left then 1 else 0)
-        where
-            up = is_blocked env (x - 1, y)
-            down = is_blocked env (x + 1, y)
-            left = is_blocked env (x, y - 1)
-            right = is_blocked env (x, y + 1)
+corral_box_score env pos@(x, y) =
+    if (get_elem env pos) /= Empty
+        then -1
+        else let
+            s = (if up then 1 else 0) +
+                (if down then 1 else 0) +
+                (if left then 1 else 0) +
+                (if right then 1 else 0) +
+                (if up && right then 1 else 0) +
+                (if up && left then 1 else 0) +
+                (if down && right then 1 else 0) +
+                (if down && left then 1 else 0)
+                    where
+                        up = is_blocked env (x - 1, y)
+                        down = is_blocked env (x + 1, y)
+                        left = is_blocked env (x, y - 1)
+                        right = is_blocked env (x, y + 1)
+            in if s == 8 then (-1) else s
 
 -- Returns the boxes in the corral with max score, and the score
 max_score_corral :: Env -> ([(Int, Int)], Int)
 max_score_corral env@(Env _ corral) = let
-    box_scores = [(b, if get_elem env b == Empty then corral_box_score env b else 0) | b <- corral]
+    box_scores = [(b, corral_box_score env b) | b <- corral]
     max_score = maximum [s | (_, s) <- box_scores]
     in ([b | (b, _) <- (filter (\ (_, s) -> s == max_score) box_scores)], max_score)
 
@@ -60,8 +64,8 @@ max_score_corral env@(Env _ corral) = let
 
 -- Returns True if Robot can walk over this box, False in other case
 -- (environment, robot, box position) -> True if can walk
-can_walk_over :: Env -> Elem -> (Int, Int) -> Bool
-can_walk_over env@(Env _ corral) robot pos =
+can_walk_over :: Env -> Elem -> (Int, Int) -> Bool -> Bool
+can_walk_over env@(Env _ corral) robot pos exclude_lockeds =
     let
         (Robot has_kid _) = get_robot(robot)
         elem_ = get_elem env pos
@@ -74,12 +78,12 @@ can_walk_over env@(Env _ corral) robot pos =
             -- not carrying a Kid
             -- and Kid is not sharing box with a Robot
             -- and Kid is not in the corral
-        ((not has_kid) && (is_kid_alone elem_) && (not (elem pos corral))))
+        ((not has_kid) && (is_kid_alone elem_) && (not (elem pos corral)) && (xor exclude_lockeds (is_kid_locked env pos))))
 
 -- Finds the shortest path for the Robot to a pos that satisfies a property (BFS).
-_shortest_path :: Env -> ((Int, Int) -> Bool) -> [((Int, Int), [(Int, Int)])] -> Seq ((Int, Int), [(Int, Int)]) -> Elem -> [(Int, Int)]
-_shortest_path _ _ _ Seq.Empty _ = []
-_shortest_path env@(Env grid corral) end_prop visited pending robot =
+_shortest_path :: Env -> ((Int, Int) -> Bool) -> [((Int, Int), [(Int, Int)])] -> Seq ((Int, Int), [(Int, Int)]) -> Elem  -> Bool -> [(Int, Int)]
+_shortest_path _ _ _ Seq.Empty _ _= []
+_shortest_path env@(Env grid corral) end_prop visited pending robot exclude_lockeds =
     let
         box@(actual, path) :<| temp_pending = pending
     in (if end_prop actual
@@ -91,45 +95,52 @@ _shortest_path env@(Env grid corral) end_prop visited pending robot =
                 new_pending =
                     temp_pending >< (fromList [ (pos, path ++ [actual]) |
                                     pos <- adj,
-                                    can_walk_over env robot pos,
+                                    can_walk_over env robot pos exclude_lockeds,
                                     not (elem pos [x | (x, _) <- visited])])
                 new_visited = visited ++ [box]
-            in _shortest_path env end_prop new_visited new_pending robot
+            in _shortest_path env end_prop new_visited new_pending robot exclude_lockeds
     )
 
 -- Returns the shortest path for a Robot to a position
 -- (env, robot, end position) -> path
 get_path :: Env -> Elem -> (Int, Int) -> [(Int, Int)]
 get_path env robot@(Robot _ pos) end =
-    _shortest_path env (\ p -> p == end) [] (singleton (pos, [])) robot
+    _shortest_path env (\ p -> p == end) [] (singleton (pos, [])) robot False
 
 -- Retruns the path from an Elem to the nearest position that satisfy a property
-_get_nearest :: Env -> (Int, Int) -> ((Int, Int) -> Bool) -> Elem -> [(Int, Int)]
-_get_nearest env start pos_prop robot =
-    _shortest_path env pos_prop [] (singleton (start, [])) robot
+_get_nearest :: Env -> (Int, Int) -> ((Int, Int) -> Bool) -> Elem -> Bool -> [(Int, Int)]
+_get_nearest env start pos_prop robot exclude_lockeds =
+    _shortest_path env pos_prop [] (singleton (start, [])) robot exclude_lockeds
 
 --pth to the nearest Kid
 -- nearest_kid :: Env -> (Int, Int) -> Elem -> [(Int, Int)]
 -- nearest_kid env start robot = _get_nearest env start is_kid robot
 
 -- Returns the nearest kid that can move
-nearest_kid_unlocked :: Env -> (Int, Int) -> Elem -> [(Int, Int)]
-nearest_kid_unlocked env start robot = let
-    condition = (\ pos -> let
-        e = get_elem env pos
-        in (is_kid_alone e) && (not (is_kid_locked env pos)))
-    in _get_nearest env start condition robot
+-- nearest_kid_unlocked :: Env -> (Int, Int) -> Elem -> [(Int, Int)]
+-- nearest_kid_unlocked env start robot = let
+--     condition = (\ pos -> let
+--         e = get_elem env pos
+--         in (is_kid_alone e) && (not (is_kid_locked env pos)))
+--     in _get_nearest env start condition robot
 
 -- Returns the nearest kid that can dirt
+nearest_kid_can_dirt :: Env -> (Int, Int) -> Elem -> [(Int, Int)]
+nearest_kid_can_dirt env@(Env _ corral) start robot = let
+    condition = (\ pos -> elem pos (free_kids env robot))
+    in _get_nearest env start condition robot True
+
+-- Returns the nearest kid
 nearest_kid :: Env -> (Int, Int) -> Elem -> [(Int, Int)]
 nearest_kid env@(Env _ corral) start robot = let
-    condition = (\ pos -> elem pos (free_kids env))
-    in _get_nearest env start condition robot
+    condition = (\ pos -> is_kid_alone (get_elem env pos))
+    in _get_nearest env start condition robot False
+
 
 -- Returns the path to the nearest Dirt
 nearest_dirt :: Env -> (Int, Int) -> Elem -> [(Int, Int)]
 nearest_dirt env start robot =
-    _get_nearest env start (\ p -> is_dirt_alone (get_elem env p)) robot
+    _get_nearest env start (\ p -> is_dirt_alone (get_elem env p)) robot True
 
 -- Moves the Robot to a new position of the Env.
 move_robot :: Env -> Elem -> (Int, Int) -> Env
@@ -186,16 +197,17 @@ estimate_score env = let
 --  are outside the corral
 --  and not sharing a box with a robot
 --  and not locked
-free_kids :: Env -> [(Int, Int)]
-free_kids env = let
+free_kids :: Env -> Elem -> [(Int, Int)]
+free_kids env (Robot hk pos)= let
     condition = (\ e -> is_kid_alone e)
-    in filter (\ p -> not (is_kid_locked env p)) (fetch_all_out env condition)
+    in filter (\ p -> not (is_kid_locked env p) || ((not hk) && (is_adj p pos)))
+        (fetch_all_out env condition)
 
 -- Checks if a goal still is valid
 is_valid_goal :: Env -> (String, (Int, Int)) -> Elem -> Bool
 is_valid_goal env ("move to", pos) _ = let
     e = get_elem env pos
-    in e == Empty || is_kid_alone e || is_dirt_alone e
+    in e == Empty || is_dirt_alone e
 is_valid_goal env ("get kid", pos) _ =
     is_kid_alone (get_elem env pos)
 is_valid_goal env ("left kid", pos) (Robot _ rpos) = let
